@@ -1,5 +1,5 @@
-import { n8nApiClient } from '@/lib/api-client';
-import { N8nWorkflow, N8nWorkflowResponse } from '../types';
+import { n8nApiClient } from "@/lib/api-client";
+import { N8nWorkflow, N8nWorkflowResponse } from "../types";
 
 export interface WorkflowListResponse {
   data: N8nWorkflowResponse[];
@@ -10,11 +10,11 @@ export interface WorkflowListResponse {
  */
 export async function getWorkflows(): Promise<N8nWorkflowResponse[]> {
   try {
-    const response = await n8nApiClient.get<WorkflowListResponse>('/workflows');
+    const response = await n8nApiClient.get<WorkflowListResponse>("/workflows");
     return response.data.data;
   } catch (error) {
-    console.error('Error fetching workflows:', error);
-    throw new Error('Failed to fetch workflows from n8n');
+    console.error("Error fetching workflows:", error);
+    throw new Error("Failed to fetch workflows from n8n");
   }
 }
 
@@ -23,7 +23,9 @@ export async function getWorkflows(): Promise<N8nWorkflowResponse[]> {
  */
 export async function getWorkflow(id: string): Promise<N8nWorkflowResponse> {
   try {
-    const response = await n8nApiClient.get<{ data: N8nWorkflowResponse }>(`/workflows/${id}`);
+    const response = await n8nApiClient.get<{ data: N8nWorkflowResponse }>(
+      `/workflows/${id}`
+    );
     return response.data.data;
   } catch (error) {
     console.error(`Error fetching workflow ${id}:`, error);
@@ -32,15 +34,28 @@ export async function getWorkflow(id: string): Promise<N8nWorkflowResponse> {
 }
 
 /**
- * Create a new workflow in n8n
+ * Create a new workflow in n8n via Next.js proxy (avoids CORS)
  */
-export async function createWorkflow(workflow: N8nWorkflow): Promise<N8nWorkflowResponse> {
+export async function createWorkflow(
+  workflow: N8nWorkflow
+): Promise<N8nWorkflowResponse> {
   try {
-    const response = await n8nApiClient.post<{ data: N8nWorkflowResponse }>('/workflows', workflow);
-    return response.data.data;
+    const response = await fetch("/api/n8n-proxy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(workflow),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to create workflow");
+    }
+
+    const data = await response.json();
+    return data.data;
   } catch (error) {
-    console.error('Error creating workflow:', error);
-    throw new Error('Failed to create workflow in n8n');
+    console.error("Error creating workflow:", error);
+    throw new Error("Failed to create workflow in n8n");
   }
 }
 
