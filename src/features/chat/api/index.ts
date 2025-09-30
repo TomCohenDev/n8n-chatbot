@@ -1,6 +1,8 @@
+import { N8N_WEBHOOK_URL } from "@/lib/constants";
+
 export interface SendMessageRequest {
   message: string;
-  conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 export interface SendMessageResponse {
@@ -9,17 +11,17 @@ export interface SendMessageResponse {
 }
 
 /**
- * Send a message to the chat API with streaming support
+ * Send a message to the n8n webhook with streaming support
  */
 export async function sendMessage(
   request: SendMessageRequest,
   onChunk?: (text: string) => void
 ): Promise<SendMessageResponse> {
   try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
+    const response = await fetch(N8N_WEBHOOK_URL, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(request),
     });
@@ -30,17 +32,17 @@ export async function sendMessage(
 
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
-    let fullResponse = '';
+    let fullResponse = "";
 
     if (!reader) {
-      throw new Error('No response body');
+      throw new Error("No response body");
     }
 
     while (true) {
       const { done, value } = await reader.read();
-      
+
       if (done) break;
-      
+
       const chunk = decoder.decode(value, { stream: true });
       fullResponse += chunk;
       onChunk?.(chunk);
@@ -50,7 +52,7 @@ export async function sendMessage(
       response: fullResponse,
     };
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error("Error sending message to n8n webhook:", error);
     throw error;
   }
 }

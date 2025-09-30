@@ -1,0 +1,124 @@
+{
+  "name": "Chat Assistant Backend",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "905cacc5-0de7-4197-91d3-00bcdc522298",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "http://localhost:3000"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "id": "7c22dcf9-36ba-41cb-a5c0-071b584014db",
+      "name": "Webhook",
+      "webhookId": "905cacc5-0de7-4197-91d3-00bcdc522298"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message",
+              "name": "message",
+              "value": "={{ $json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "history",
+              "name": "conversationHistory",
+              "value": "={{ $json.body.conversationHistory || [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300],
+      "id": "extract-input",
+      "name": "Extract Input"
+    },
+    {
+      "parameters": {
+        "authentication": "apiKey",
+        "model": "claude-3-5-sonnet-20241022",
+        "systemPrompt": "You are an n8n workflow assistant. When users ask you to create workflows:\n\n1. Return valid n8n workflow JSON\n2. Use proper node types like \"n8n-nodes-base.webhook\", \"n8n-nodes-base.slack\", etc.\n3. Include required fields: id, name, type, typeVersion, position, parameters\n4. Create proper connections between nodes\n5. Never include secrets in parameters - use credentials placeholders\n6. Wrap workflow JSON in a code block with ```json\n\nAvailable common nodes:\n- n8n-nodes-base.webhook (triggers)\n- n8n-nodes-base.httpRequest\n- n8n-nodes-base.slack\n- n8n-nodes-base.gmail\n- n8n-nodes-base.if (conditional logic)\n- n8n-nodes-base.set (data transformation)\n- n8n-nodes-base.code (custom JavaScript/Python code)\n- n8n-nodes-base.function (execute custom code)\n- n8n-nodes-base.filter (filter items)\n- n8n-nodes-base.merge (merge data from multiple sources)\n\nWhen creating workflows:\n- Always start with a trigger node (webhook, schedule, etc.)\n- Use descriptive node names\n- Position nodes logically (left to right flow)\n- Include helpful comments in parameters when relevant\n- Ensure all connections are properly defined\n\nBe helpful, concise, and always provide working examples.",
+        "text": "={{ $json.message }}",
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "type": "n8n-nodes-base.anthropic",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "id": "call-claude",
+      "name": "Call Claude API",
+      "credentials": {
+        "anthropicApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"response\": $json.response, \"workflowJson\": $json.workflowJson || null } }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "id": "respond",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Input": {
+      "main": [
+        [
+          {
+            "node": "Call Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude API": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-09-30T00:00:00.000Z",
+  "versionId": "1"
+}

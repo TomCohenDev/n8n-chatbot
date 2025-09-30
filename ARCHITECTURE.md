@@ -21,59 +21,79 @@ The n8n Chat Assistant follows **Clean Architecture** principles, separating con
                   │
 ┌─────────────────┴───────────────────────────────────┐
 │              Features Layer                          │
-│  - Chat (State, API, Types)                         │
-│  - Workflow (Validation, API, Types)                │
+│  - Chat (State, Webhook API, Types)                 │
+│  - Workflow (Validation, n8n API, Types)            │
 └─────────────────┬───────────────────────────────────┘
                   │
 ┌─────────────────┴───────────────────────────────────┐
 │              Infrastructure Layer                    │
-│  - API Clients (Axios, Claude SDK)                  │
-│  - External APIs (n8n, Anthropic)                   │
+│  - n8n Webhook Client                               │
+│  - n8n REST API Client (Axios)                      │
+└─────────────────┬───────────────────────────────────┘
+                  │
+┌─────────────────┴───────────────────────────────────┐
+│              n8n Backend Workflow                    │
+│  - Receives chat requests via webhook               │
+│  - Calls Claude API for AI responses                │
+│  - Handles all business logic                       │
 └─────────────────────────────────────────────────────┘
 ```
 
 ## Folder Structure
 
 ### `/src/app` - Application Layer
-Next.js App Router pages and API routes.
+
+Next.js App Router pages.
 
 - `page.tsx` - Main chat interface page
 - `layout.tsx` - Root layout with global providers
-- `api/chat/route.ts` - Streaming chat API endpoint
 
-**Responsibility**: Entry points for the application, routing, and API endpoints.
+**Responsibility**: Entry points for the application and routing.
+
+**Note**: This app does not have backend API routes. All AI processing is handled by the n8n workflow.
 
 ### `/src/components` - Presentation Layer
+
 React components for UI rendering.
 
 #### `/src/components/ui`
+
 shadcn/ui components (auto-generated):
+
 - `button.tsx`, `input.tsx`, `card.tsx`, etc.
 - Reusable, accessible UI primitives
 
 #### `/src/components/chat`
+
 Chat-specific components:
+
 - `chat-container.tsx` - Main chat interface orchestrator
 - `message-bubble.tsx` - Individual message display
 - `chat-input.tsx` - Message input field
 
 #### `/src/components/workflow`
+
 Workflow-related components:
+
 - `workflow-actions.tsx` - Copy/Insert/View buttons
 - `workflow-json-viewer.tsx` - Syntax-highlighted JSON viewer
 
 **Responsibility**: Pure presentational components, no business logic.
 
 ### `/src/features` - Domain Layer
+
 Feature-specific business logic organized by domain.
 
 #### `/src/features/chat`
+
 Chat domain logic:
 
 **`/api`**
+
 - `index.ts` - Client-side API functions for sending messages
 
 **`/store`**
+
 - `index.ts` - Zustand store for chat state
   - Messages array
   - Loading states
@@ -81,15 +101,18 @@ Chat domain logic:
   - Message mutations
 
 **`/types`**
+
 - `index.ts` - TypeScript interfaces
   - `Message` - Chat message structure
   - `ChatState` - Store state shape
   - `ParsedWorkflow` - Extracted workflow data
 
 #### `/src/features/workflow`
+
 Workflow domain logic:
 
 **`/api`**
+
 - `index.ts` - n8n API client functions
   - `getWorkflows()` - Fetch all workflows
   - `getWorkflow(id)` - Fetch single workflow
@@ -98,12 +121,14 @@ Workflow domain logic:
   - `deleteWorkflow(id)` - Delete workflow
 
 **`/validation`**
+
 - `schema.ts` - Zod validation schemas
   - `n8nNodeSchema` - Node structure validation
   - `n8nWorkflowSchema` - Full workflow validation
   - `validateWorkflow()` - Validation helper
 
 **`/types`**
+
 - `index.ts` - TypeScript interfaces
   - `N8nNode` - Node structure
   - `N8nWorkflow` - Workflow structure
@@ -112,15 +137,14 @@ Workflow domain logic:
 **Responsibility**: Domain-specific business logic, validation, and state management.
 
 ### `/src/lib` - Infrastructure Layer
+
 Shared utilities and external service integrations.
 
-- `api-client.ts` - Configured Axios instance for n8n API
-- `claude.ts` - Claude SDK wrapper and streaming utilities
-- `prompts.ts` - AI system prompts
-- `constants.ts` - Application constants
-- `utils.ts` - Shared utilities (from shadcn/ui)
+- `api-client.ts` - Configured Axios instance for n8n REST API
+- `constants.ts` - Application constants (includes webhook URL)
+- `utils.ts` - Shared utilities (includes JSON extraction)
 
-**Responsibility**: Low-level utilities, SDK wrappers, and configuration.
+**Responsibility**: Low-level utilities, API clients, and configuration.
 
 ## Data Flow
 
@@ -135,17 +159,24 @@ ChatContainer (event handler)
     ↓
 useChatStore.addMessage() ← Add user message
     ↓
-sendMessage() API call ← /src/features/chat/api
+sendMessage() ← /src/features/chat/api
     ↓
-POST /api/chat ← Next.js API route
+POST to n8n webhook ← N8N_WEBHOOK_URL
     ↓
-streamChat() ← Claude API
+n8n Workflow Processing:
+  - Extract request data
+  - Call Claude API
+  - Return response
     ↓
-Stream chunks back ← Server-Sent Events
+Stream chunks back ← Webhook response
     ↓
 useChatStore.updateLastMessage() ← Update AI message
     ↓
 MessageBubble re-renders ← Show streaming response
+    ↓
+extractWorkflowJson() ← Parse JSON blocks
+    ↓
+WorkflowActions ← Show action buttons
 ```
 
 ### Workflow Insertion Flow
@@ -173,6 +204,7 @@ Success/Error toast ← User feedback
 ### Zustand Store (`useChatStore`)
 
 **State:**
+
 ```typescript
 {
   messages: Message[],
@@ -182,6 +214,7 @@ Success/Error toast ← User feedback
 ```
 
 **Actions:**
+
 - `addMessage(message)` - Add a new message
 - `updateLastMessage(content)` - Append to last message (streaming)
 - `setLoading(isLoading)` - Toggle loading state
@@ -189,6 +222,7 @@ Success/Error toast ← User feedback
 - `clearMessages()` - Clear all messages
 
 **Why Zustand?**
+
 - Lightweight (no context providers needed)
 - Simple API
 - Good TypeScript support
@@ -199,6 +233,7 @@ Success/Error toast ← User feedback
 ### `POST /api/chat`
 
 **Request:**
+
 ```json
 {
   "message": "Create a webhook workflow"
@@ -209,6 +244,7 @@ Success/Error toast ← User feedback
 Streaming plain text response (chunks of AI-generated text)
 
 **Flow:**
+
 1. Validate request
 2. Call Claude API with system prompt
 3. Stream response chunks
@@ -221,6 +257,7 @@ Streaming plain text response (chunks of AI-generated text)
 **Base URL:** `http://localhost:5678/api/v1`
 
 **Endpoints Used:**
+
 - `GET /workflows` - List all workflows
 - `GET /workflows/:id` - Get single workflow
 - `POST /workflows` - Create new workflow
@@ -228,6 +265,7 @@ Streaming plain text response (chunks of AI-generated text)
 - `DELETE /workflows/:id` - Delete workflow
 
 **Authentication:**
+
 - Header: `X-N8N-API-KEY`
 
 ### Anthropic Claude API
@@ -235,28 +273,33 @@ Streaming plain text response (chunks of AI-generated text)
 **Model:** `claude-3-5-sonnet-20241022`
 
 **Features Used:**
+
 - Message streaming
 - System prompts
 - Text generation
 
 **Configuration:**
+
 - Max tokens: 4096
 - Streaming: Enabled
 
 ## Validation Strategy
 
 ### Client-Side Validation
+
 - Zod schemas validate workflow structure
 - Prevents invalid data from reaching n8n
 - Provides user-friendly error messages
 
 **Validated Fields:**
+
 - Node IDs (non-empty strings)
 - Node types (valid n8n node types)
 - Positions (tuple of numbers)
 - Connections (valid node references)
 
 ### Server-Side Validation
+
 - Next.js API routes validate requests
 - Type checking with TypeScript
 - Runtime validation with Zod
@@ -266,16 +309,19 @@ Streaming plain text response (chunks of AI-generated text)
 ### Layers of Error Handling
 
 1. **Component Level**
+
    - Try-catch around API calls
    - Display errors in UI with toasts
    - Graceful degradation
 
 2. **API Client Level**
+
    - Axios interceptors log errors
    - Transform error messages
    - Retry logic (future enhancement)
 
 3. **API Route Level**
+
    - Validate input
    - Catch exceptions
    - Return appropriate HTTP status codes
@@ -288,12 +334,14 @@ Streaming plain text response (chunks of AI-generated text)
 ## Performance Considerations
 
 ### Optimizations
+
 - **Code Splitting**: Next.js automatic code splitting
 - **Streaming**: Real-time response display
 - **Lazy Loading**: Components loaded as needed
 - **Memoization**: React components memoized where beneficial
 
 ### Future Optimizations
+
 - Implement conversation history pagination
 - Add message virtualization for long chats
 - Cache workflow templates
@@ -302,32 +350,38 @@ Streaming plain text response (chunks of AI-generated text)
 ## Security
 
 ### API Keys
+
 - Stored in environment variables
 - Never exposed to client
 - Server-side only
 
 ### Validation
+
 - All workflow JSON validated before insertion
 - Zod schemas enforce type safety
 - Prevents malformed data
 
 ### CORS
+
 - Next.js API routes handle CORS
 - n8n API requires proper configuration
 
 ## Testing Strategy (Future)
 
 ### Unit Tests
+
 - Utility functions
 - Validation schemas
 - Store actions
 
 ### Integration Tests
+
 - API routes
 - Component interactions
 - API client functions
 
 ### E2E Tests
+
 - Full chat flow
 - Workflow insertion
 - Error scenarios
@@ -335,6 +389,7 @@ Streaming plain text response (chunks of AI-generated text)
 ## Deployment
 
 ### Environment Variables Required
+
 ```env
 ANTHROPIC_API_KEY=xxx
 N8N_API_URL=xxx
@@ -342,12 +397,14 @@ N8N_API_KEY=xxx
 ```
 
 ### Build Process
+
 ```bash
 npm run build
 npm run start
 ```
 
 ### Hosting Options
+
 - Vercel (recommended)
 - Docker container
 - Traditional Node.js server
@@ -355,14 +412,17 @@ npm run start
 ## Future Architecture Enhancements
 
 1. **Conversation History**
+
    - Persist chats to database
    - Multi-turn context awareness
 
 2. **Caching Layer**
+
    - Cache workflow templates
    - Cache n8n node documentation
 
 3. **WebSocket Support**
+
    - Real-time collaboration
    - Live workflow updates
 
@@ -373,6 +433,7 @@ npm run start
 ---
 
 This architecture provides:
+
 - ✅ Separation of concerns
 - ✅ Testability
 - ✅ Maintainability
