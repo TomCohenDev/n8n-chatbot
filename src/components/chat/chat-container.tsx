@@ -1,15 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { useChatStore } from '@/features/chat/store';
-import { MessageBubble } from './message-bubble';
-import { ChatInput } from './chat-input';
-import { sendMessage } from '@/features/chat/api';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useRef } from "react";
+import { useChatStore } from "@/features/chat/store";
+import { MessageBubble } from "./message-bubble";
+import { ChatInput } from "./chat-input";
+import { sendMessage } from "@/features/chat/api";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2 } from "lucide-react";
 
 export function ChatContainer() {
-  const { messages, isLoading, addMessage, updateLastMessage, setLoading, setError } = useChatStore();
+  const {
+    messages,
+    isLoading,
+    addMessage,
+    updateLastMessage,
+    setLoading,
+    setError,
+  } = useChatStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,10 +28,10 @@ export function ChatContainer() {
 
   const handleSendMessage = async (content: string) => {
     // Add user message
-    addMessage({ role: 'user', content });
+    addMessage({ role: "user", content });
 
-    // Add empty assistant message that will be updated with streaming
-    addMessage({ role: 'assistant', content: '' });
+    // Add empty assistant message that will be updated
+    addMessage({ role: "assistant", content: "" });
     setLoading(true);
     setError(null);
 
@@ -32,13 +39,17 @@ export function ChatContainer() {
       await sendMessage(
         { message: content },
         (chunk) => {
-          // Update the last message with each chunk
+          // Update the last message with message content
           updateLastMessage(chunk);
+        },
+        (workflows, metadata) => {
+          // Update message with workflows after response completes
+          updateLastMessage("", workflows, metadata);
         }
       );
     } catch (error) {
-      console.error('Error sending message:', error);
-      setError('Failed to send message. Please try again.');
+      console.error("Error sending message:", error);
+      setError("Failed to send message. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -51,8 +62,13 @@ export function ChatContainer() {
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">Welcome to n8n Chat Assistant</h2>
-              <p>Ask me to create workflows, and I&apos;ll generate n8n workflow JSON for you!</p>
+              <h2 className="text-2xl font-bold mb-2">
+                Welcome to n8n Chat Assistant
+              </h2>
+              <p>
+                Ask me to create workflows, and I&apos;ll generate n8n workflow
+                JSON for you!
+              </p>
               <div className="mt-6 text-left max-w-md mx-auto">
                 <p className="font-semibold mb-2">Try asking:</p>
                 <ul className="list-disc list-inside space-y-1 text-sm">

@@ -1,4 +1,5 @@
 import { N8N_WEBHOOK_URL } from "@/lib/constants";
+import { WorkflowData } from "../types";
 
 export interface SendMessageRequest {
   message: string;
@@ -7,15 +8,24 @@ export interface SendMessageRequest {
 
 export interface SendMessageResponse {
   response: string;
-  workflowJson?: string;
+  workflows?: WorkflowData[];
+  metadata?: {
+    hasWorkflows: boolean;
+    workflowCount: number;
+    requiresCredentials: string[];
+  };
 }
 
 /**
- * Send a message to the n8n webhook with streaming support
+ * Send a message to the n8n webhook and handle structured response
  */
 export async function sendMessage(
   request: SendMessageRequest,
-  onChunk?: (text: string) => void
+  onChunk?: (text: string) => void,
+  onComplete?: (
+    workflows?: WorkflowData[],
+    metadata?: SendMessageResponse["metadata"]
+  ) => void
 ): Promise<SendMessageResponse> {
   try {
     const response = await fetch(N8N_WEBHOOK_URL, {
@@ -30,26 +40,22 @@ export async function sendMessage(
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let fullResponse = "";
+    const data = await response.json();
 
-    if (!reader) {
-      throw new Error("No response body");
+    // Stream the message content
+    if (onChunk && data.message) {
+      onChunk(data.message);
     }
 
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      fullResponse += chunk;
-      onChunk?.(chunk);
+    // Pass workflows to callback
+    if (onComplete && data.workflows) {
+      onComplete(data.workflows, data.metadata);
     }
 
     return {
-      response: fullResponse,
+      response: data.message || "",
+      workflows: data.workflows,
+      metadata: data.metadata,
     };
   } catch (error) {
     console.error("Error sending message to n8n webhook:", error);

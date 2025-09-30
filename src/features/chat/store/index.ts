@@ -1,9 +1,13 @@
-import { create } from 'zustand';
-import { Message, ChatState } from '../types';
+import { create } from "zustand";
+import { Message, ChatState, WorkflowData } from "../types";
 
 interface ChatStore extends ChatState {
-  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
-  updateLastMessage: (content: string) => void;
+  addMessage: (message: Omit<Message, "id" | "timestamp">) => void;
+  updateLastMessage: (
+    content: string,
+    workflows?: WorkflowData[],
+    metadata?: Message["metadata"]
+  ) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
   clearMessages: () => void;
@@ -26,7 +30,7 @@ export const useChatStore = create<ChatStore>((set) => ({
       ],
     })),
 
-  updateLastMessage: (content) =>
+  updateLastMessage: (content, workflows, metadata) =>
     set((state) => {
       const messages = [...state.messages];
       if (messages.length > 0) {
@@ -34,6 +38,8 @@ export const useChatStore = create<ChatStore>((set) => ({
         messages[messages.length - 1] = {
           ...lastMessage,
           content: lastMessage.content + content,
+          ...(workflows && { workflows }),
+          ...(metadata && { metadata }),
         };
       }
       return { messages };

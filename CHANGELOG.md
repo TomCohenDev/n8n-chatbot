@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-09-30
+
+### Changed - Structured Workflow Responses
+
+#### Updated Response Handling
+
+- **Changed** from markdown extraction to structured JSON responses
+- **Changed** `Message` interface to include `workflows` array instead of `workflowJson` string
+- **Changed** API to handle structured response with message and workflows separately
+- **Changed** Chat store to accept workflows and metadata in `updateLastMessage`
+
+#### New Workflow Display
+
+- **Added** `WorkflowCard` component for displaying individual workflows
+- **Added** `WorkflowData` interface with name, description, and json
+- **Added** metadata support (hasWorkflows, workflowCount, requiresCredentials)
+- **Added** workflow count badge in message bubbles
+- **Added** support for multiple workflows per message
+
+#### Removed Old Logic
+
+- **Removed** `extractWorkflowJson` function from utils
+- **Removed** markdown code block parsing
+- **Removed** `ParsedWorkflow` interface
+
+#### UI Improvements
+
+- **Enhanced** message bubble to display workflows in cards
+- **Enhanced** workflow actions to accept optional workflow name
+- **Enhanced** visual presentation with badges and metadata
+- **Enhanced** support for displaying multiple workflows clearly
+
+### Benefits
+
+1. **Multiple Workflows**: Can now display multiple workflows in one response
+2. **Better Structure**: Workflows have names, descriptions, and metadata
+3. **Type Safety**: Full TypeScript support for structured data
+4. **Cleaner UI**: Separate message text from workflow JSON
+5. **Extensibility**: Easy to add more workflow information
+
+---
+
 ## [0.2.0] - 2025-09-30
 
 ### Changed - Major Architecture Refactor

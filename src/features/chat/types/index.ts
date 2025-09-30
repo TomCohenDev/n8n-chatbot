@@ -1,21 +1,26 @@
-export type MessageRole = 'user' | 'assistant';
+export type MessageRole = "user" | "assistant";
+
+export interface WorkflowData {
+  name: string;
+  description: string;
+  json: Record<string, unknown>;
+}
 
 export interface Message {
   id: string;
   role: MessageRole;
   content: string;
   timestamp: Date;
-  workflowJson?: string; // Extracted workflow JSON if present
+  workflows?: WorkflowData[]; // Array of structured workflows
+  metadata?: {
+    hasWorkflows: boolean;
+    workflowCount: number;
+    requiresCredentials: string[];
+  };
 }
 
 export interface ChatState {
   messages: Message[];
   isLoading: boolean;
   error: string | null;
-}
-
-export interface ParsedWorkflow {
-  json: string;
-  startIndex: number;
-  endIndex: number;
 }
