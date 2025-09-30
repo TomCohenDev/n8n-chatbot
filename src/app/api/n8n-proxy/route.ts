@@ -7,13 +7,38 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Sanitize workflow: n8n rejects additional properties on create
+    const pick = <T extends object, K extends keyof T>(obj: T, keys: K[]) =>
+      Object.fromEntries(
+        keys.filter((k) => k in obj).map((k) => [k, (obj as any)[k]])
+      );
+
+    const sanitizeNode = (node: any) =>
+      pick(node, [
+        "id",
+        "name",
+        "type",
+        "typeVersion",
+        "position",
+        "parameters",
+        "credentials",
+      ]);
+
+    const sanitizeConnections = (connections: any) => connections || {};
+
+    const sanitized = {
+      ...pick(body, ["name", "settings", "active"]),
+      nodes: Array.isArray(body?.nodes) ? body.nodes.map(sanitizeNode) : [],
+      connections: sanitizeConnections(body?.connections),
+    } as any;
+
     const response = await fetch(`${N8N_API_URL}/workflows`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(N8N_API_KEY && { "X-N8N-API-KEY": N8N_API_KEY }),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(sanitized),
     });
 
     if (!response.ok) {
