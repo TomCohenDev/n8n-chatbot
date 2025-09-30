@@ -27,7 +27,14 @@ export const n8nWorkflowSchema = z.object({
   ),
   active: z.boolean().optional(),
   settings: z.record(z.string(), z.unknown()).optional(),
-  staticData: z.record(z.string(), z.unknown()).optional(),
+  // staticData can be null in exported workflows
+  staticData: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
+  // common optional fields seen in exported workflows
+  pinData: z.record(z.string(), z.unknown()).optional().nullable(),
+  tags: z.array(z.unknown()).optional(),
+  triggerCount: z.number().optional(),
+  updatedAt: z.string().optional(),
+  versionId: z.string().optional(),
 });
 
 export type N8nNodeInput = z.infer<typeof n8nNodeSchema>;
