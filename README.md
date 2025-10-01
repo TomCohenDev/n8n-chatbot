@@ -148,7 +148,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) and [N8N_BACKEND.md](./N8N_BACKEND.md) 
 
 - **Backend**: n8n workflow (handles all AI logic)
 - **AI**: Anthropic Claude API (called from n8n)
-- **HTTP Client**: Axios (for n8n REST API only)
+- **HTTP Client**: Axios (n8n REST via Next.js proxy)
+- **Proxy**: Next.js API route `/api/n8n-proxy` (avoids CORS)
 - **Validation**: Zod
 
 ## 📝 Scripts
@@ -186,7 +187,7 @@ npm run lint         # Run ESLint
 
 - Ensure n8n is running on the configured URL
 - Check your `N8N_API_KEY` is correct
-- This is separate from the webhook (used for workflow insertion)
+- Frontend now uses `/api/n8n-proxy` to avoid browser CORS
 
 ### "Invalid workflow JSON"
 
@@ -201,6 +202,23 @@ npm run lint         # Run ESLint
 - Verify Anthropic API credentials in n8n
 - Review n8n execution history for errors
 - Ensure you have Anthropic API credits remaining
+
+## 🔐 Environment Variables
+
+```env
+# Local n8n for inserting workflows
+N8N_API_URL=http://localhost:5678/api/v1
+N8N_API_KEY=your_local_n8n_api_key
+
+# Remote n8n webhook for chat backend
+NEXT_PUBLIC_N8N_WEBHOOK_URL=https://your-remote-n8n/webhook/ID
+```
+
+## 🔀 n8n Proxy (CORS-free)
+
+- Endpoint: `/api/n8n-proxy`
+- Forwards POST to `${N8N_API_URL}/workflows` with `X-N8N-API-KEY`
+- Sanitizes workflow body to include only supported fields (name, settings, active, nodes, connections)
 
 ## 🚧 Roadmap
 

@@ -47,6 +47,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.1] - 2025-09-30
+
+### Added
+
+- Next.js API proxy at `/api/n8n-proxy` to bypass browser CORS for n8n REST calls
+- Workflow payload sanitizer in proxy to match n8n create endpoint schema
+
+### Changed
+
+- Frontend insert action now calls the proxy instead of calling n8n directly
+- Validation schema relaxed to accept exported workflow fields (`staticData: null`, `pinData`, `tags`, etc.)
+
+### Docs
+
+- Added guides for enabling CORS in Docker and configuring proxy
+- Updated README and architecture flow to include proxy and env variables
+
 ## [0.2.0] - 2025-09-30
 
 ### Changed - Major Architecture Refactor

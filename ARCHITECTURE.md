@@ -43,14 +43,13 @@ The n8n Chat Assistant follows **Clean Architecture** principles, separating con
 
 ### `/src/app` - Application Layer
 
-Next.js App Router pages.
+Next.js App Router pages and lightweight API routes.
 
 - `page.tsx` - Main chat interface page
 - `layout.tsx` - Root layout with global providers
+- `api/n8n-proxy/route.ts` - Proxy to n8n REST API (avoids browser CORS)
 
-**Responsibility**: Entry points for the application and routing.
-
-**Note**: This app does not have backend API routes. All AI processing is handled by the n8n workflow.
+**Responsibility**: Entry points for the application, routing, and minimal proxying to backend services.
 
 ### `/src/components` - Presentation Layer
 
